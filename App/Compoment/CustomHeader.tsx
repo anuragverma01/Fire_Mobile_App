@@ -5,19 +5,16 @@ const CustomHeader = ({ title }: any) => {
   const navigation = useNavigation();
   const route = useRoute();
   const isListScreen = route.name === "ActiveList" || route.name === "PredictionList";
-
   return (
     <View style={styles.headerContainer}>
       <Text style={styles.headerTitle}>{title}</Text>
       <TouchableOpacity
         onPress={() =>
-          navigation.navigate(title === "Active Fire Alerts" ? "ActiveList" : "PredictionList")}>
+          navigation.navigate(title === "Active Fire Map" ? "ActiveList" : "PredictionList")}>
         {!isListScreen && (
           <Text style={styles.navText}>
-            {title === "Active Fire Alerts" ? "List Active" : "list prediction"}
-
+            {title === "Active Fire Map" ? "List Active" : "list prediction"}
           </Text>
-
         )}
       </TouchableOpacity>
     </View>

@@ -1,40 +1,42 @@
 import React, { useEffect, useState } from "react";
-import { 
-  View, Text, FlatList, ActivityIndicator, StyleSheet, 
-  TouchableOpacity, Modal, Button 
+import {
+  View, Text, FlatList, ActivityIndicator, StyleSheet,
+  TouchableOpacity, Modal, Button
 } from "react-native";
 import axios from "axios";
+import { FireData,FireListProps } from "./types";
 
-interface LiveFireData {
-  latitude: number;
-  longitude: number;
-  city: string;
-  temperature: number;
-  humidity: number;
-  wind_speed: number;
-}
-
-const ActiveFireList: React.FC = () => {
-  const API_URL = "https://app-rewt.onrender.com/live-fire";
-
-  const [data, setData] = useState<LiveFireData[]>([]);
+const FireList: React.FC<FireListProps> = ({ apiUrl, filterHighRisk = false }) => {
+  const [data, setData] = useState<FireData[]>([]);
   const [page, setPage] = useState<number>(1);
   const [loading, setLoading] = useState<boolean>(false);
   const [hasMore, setHasMore] = useState<boolean>(true);
-  const [selectedItem, setSelectedItem] = useState<LiveFireData | null>(null);
+  const [selectedItem, setSelectedItem] = useState<FireData | null>(null);
   const [modalVisible, setModalVisible] = useState<boolean>(false);
 
   const fetchData = async () => {
-    if (loading || !hasMore) return; 
+    if (loading || !hasMore) return;
     setLoading(true);
 
     try {
-      const response = await axios.get<{ data: LiveFireData[] }>(`${API_URL}?page=${page}&limit=50`);
-      const newData = response.data.data;
-      console.log("Data!!!!!!",newData)
+      const response = await axios.get<{ data: any[] }>(`${apiUrl}?page=${page}&limit=50`);
+      let newData = response.data.data;
+      if (filterHighRisk) {
+        newData = newData.filter((item: any) => item["Fire Risk"] === "High");
+      }
 
-      if (newData.length > 0) {
-        setData((prevData) => [...prevData, ...newData]);
+      const formattedData: FireData[] = newData.map((item) => ({
+        latitude: item.latitude ?? item.Latitude,
+        longitude: item.longitude ?? item.Longitude,
+        city: item.city ?? item.City,
+        temperature: item.temperature ?? item.Temperature,
+        humidity: item.humidity ?? item.Humidity,
+        windSpeed: item.wind_speed ?? item.WindSpeed,
+        fireRisk: item["Fire Risk"],
+      }));
+
+      if (formattedData.length > 0) {
+        setData((prevData) => [...prevData, ...formattedData]);
         setPage((prevPage) => prevPage + 1);
       } else {
         setHasMore(false);
@@ -50,14 +52,14 @@ const ActiveFireList: React.FC = () => {
     fetchData();
   }, []);
 
-  const openModal = (item: LiveFireData) => {
+  const openModal = (item: FireData) => {
     setSelectedItem(item);
     setModalVisible(true);
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.header}>Live Fire Data</Text>
+      <Text style={styles.header}>{ }</Text>
 
       <FlatList
         data={data}
@@ -65,7 +67,11 @@ const ActiveFireList: React.FC = () => {
         renderItem={({ item }) => (
           <TouchableOpacity style={styles.item} onPress={() => openModal(item)}>
             <Text style={styles.cityText}>{item.city}</Text>
-            <Text style={styles.tempText}>🌡 Temperature: {item.temperature}°C</Text>
+            {item.fireRisk ? (
+              <Text style={styles.riskText}>🔥 Fire Risk: {item.fireRisk}</Text>
+            ) : (
+              <Text style={styles.tempText}>🌡 Temperature: {item.temperature}°C</Text>
+            )}
           </TouchableOpacity>
         )}
         onEndReached={fetchData}
@@ -73,7 +79,7 @@ const ActiveFireList: React.FC = () => {
         ListFooterComponent={() => loading && <ActivityIndicator size="large" />}
       />
 
-      <Modal visible={modalVisible} animationType="slide" transparent>
+      <Modal visible={modalVisible} transparent>
         <View style={styles.modalContainer}>
           <View style={styles.modalContent}>
             {selectedItem && (
@@ -81,9 +87,15 @@ const ActiveFireList: React.FC = () => {
                 <Text style={styles.modalTitle}>{selectedItem.city}</Text>
                 <Text style={styles.modalText}>🌍 Latitude: {selectedItem.latitude}</Text>
                 <Text style={styles.modalText}>🌍 Longitude: {selectedItem.longitude}</Text>
-                <Text style={styles.modalText}>🌡 Temperature: {selectedItem.temperature}°C</Text>
-                <Text style={styles.modalText}>💧 Humidity: {selectedItem.humidity}%</Text>
-                <Text style={styles.modalText}>💨 Wind Speed: {selectedItem.wind_speed} m/s</Text>
+                {selectedItem.temperature && (
+                  <Text style={styles.modalText}>🌡 Temperature: {selectedItem.temperature}°C</Text>
+                )}
+                {selectedItem.humidity && (
+                  <Text style={styles.modalText}>💧 Humidity: {selectedItem.humidity}%</Text>
+                )}
+                {selectedItem.windSpeed && (
+                  <Text style={styles.modalText}>💨 Wind Speed: {selectedItem.windSpeed} m/s</Text>
+                )}
                 <Button title="Close" onPress={() => setModalVisible(false)} />
               </>
             )}
@@ -93,8 +105,6 @@ const ActiveFireList: React.FC = () => {
     </View>
   );
 };
-
-// Styles
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -112,7 +122,7 @@ const styles = StyleSheet.create({
     padding: 15,
     marginVertical: 8,
     borderRadius: 10,
-    elevation: 2, 
+    elevation: 2,
   },
   cityText: {
     fontSize: 18,
@@ -121,6 +131,11 @@ const styles = StyleSheet.create({
   tempText: {
     fontSize: 14,
     color: "gray",
+  },
+  riskText: {
+    fontSize: 14,
+    fontWeight: "bold",
+    color: "red",
   },
   modalContainer: {
     flex: 1,
@@ -146,4 +161,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default ActiveFireList;
+export default FireList;
